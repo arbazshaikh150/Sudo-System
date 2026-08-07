@@ -5,20 +5,23 @@ import {
   GripHorizontal,
   LoaderCircle,
   Maximize2,
+  MessageSquare,
   Plus,
   X,
 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 function NodeCard({
   node,
   relationshipFrom,
+  messageSelection,
   activeNodeId,
   onSelect,
   onStartInteraction,
   onUpdateInteraction,
   onStopInteraction,
 }) {
-  const selected = relationshipFrom === node.id
+  const selected = relationshipFrom === node.id || messageSelection?.fromId === node.id
   const isInspecting = activeNodeId === node.id
   return (
     <article
@@ -29,7 +32,7 @@ function NodeCard({
         width: node.width,
         height: node.height,
       }}
-      className={`node-card absolute z-10 border-t-4 ${node.tint} ${relationshipFrom ? 'cursor-crosshair' : ''} ${selected || isInspecting ? 'ring-4 ring-indigo-300 ring-offset-2' : relationshipFrom === 'selecting' ? 'hover:ring-4 hover:ring-indigo-200' : ''}`}
+      className={`node-card absolute z-10 border-t-4 ${node.tint} ${relationshipFrom || messageSelection ? 'cursor-crosshair' : ''} ${selected || isInspecting ? 'ring-4 ring-indigo-300 ring-offset-2' : relationshipFrom === 'selecting' || (messageSelection && !messageSelection.fromId) ? 'hover:ring-4 hover:ring-indigo-200' : ''}`}
     >
       <div
         onPointerDown={(event) => onStartInteraction(event, node, 'drag')}
@@ -78,18 +81,64 @@ export function Canvas({
   nodes,
   relationships,
   relationshipFrom,
+  messageSelection,
+  activeMessage,
   activeNodeId,
   onCancelRelationship,
+  onMessageComplete,
   onSelectNode,
   onStartInteraction,
   onUpdateInteraction,
   onStopInteraction,
   inspector,
 }) {
-  const instruction =
-    relationshipFrom === 'selecting'
+  const [messagePosition, setMessagePosition] = useState(null)
+  const isSendingMessage = Boolean(messageSelection)
+  const instruction = isSendingMessage
+    ? messageSelection.fromId
+      ? 'Select the destination node'
+      : 'Select the source node'
+    : relationshipFrom === 'selecting'
       ? 'Select the first node'
       : 'Select the destination node'
+
+  useEffect(() => {
+    if (!activeMessage) return undefined
+    const path = activeMessage.pathKeys
+      .map((key) => nodes.find((node) => node.key === key))
+      .filter(Boolean)
+    if (path.length < 2) {
+      onMessageComplete()
+      return undefined
+    }
+    const points = path.map((node) => ({
+      x: node.x + node.width / 2,
+      y: node.y + node.height / 2,
+    }))
+    const startedAt = performance.now()
+    const duration = Math.max(1100, (points.length - 1) * 900)
+    let frame
+    const animate = (now) => {
+      const progress = Math.min((now - startedAt) / duration, 1)
+      const travel = progress * (points.length - 1)
+      const segment = Math.min(Math.floor(travel), points.length - 2)
+      const segmentProgress = travel - segment
+      const from = points[segment]
+      const to = points[segment + 1]
+      setMessagePosition({
+        x: from.x + (to.x - from.x) * segmentProgress,
+        y: from.y + (to.y - from.y) * segmentProgress,
+        messageId: activeMessage.messageId,
+      })
+      if (progress < 1) frame = requestAnimationFrame(animate)
+      else window.setTimeout(onMessageComplete, 450)
+    }
+    frame = requestAnimationFrame(animate)
+    return () => {
+      cancelAnimationFrame(frame)
+      setMessagePosition(null)
+    }
+  }, [activeMessage, nodes, onMessageComplete])
   return (
     <section
       ref={canvasRef}
@@ -101,9 +150,9 @@ export function Canvas({
         </span>
         <span className="hidden sm:inline">SYSTEM ARCHITECTURE CANVAS</span>
       </div>
-      {relationshipFrom && (
+      {(relationshipFrom || messageSelection) && (
         <div className="absolute left-1/2 top-12 z-30 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full border border-indigo-100 bg-white px-3 py-2 text-xs font-bold text-indigo-700 shadow-card">
-          <GitBranch size={15} />
+          {isSendingMessage ? <MessageSquare size={15} /> : <GitBranch size={15} />}
           {instruction}
           <button
             aria-label="Cancel relationship"
@@ -115,6 +164,19 @@ export function Canvas({
         </div>
       )}
       {inspector}
+      {messagePosition && (
+        <div
+          className="pointer-events-none absolute z-40 grid h-10 w-10 place-items-center rounded-full border-2 border-white bg-gradient-to-br from-cyan-400 to-indigo-600 text-white shadow-lg shadow-indigo-300/70"
+          style={{
+            left: messagePosition.x,
+            top: messagePosition.y,
+            transform: 'translate(-50%, -50%)',
+          }}
+          title={messagePosition.messageId}
+        >
+          <MessageSquare size={19} fill="currentColor" strokeWidth={2.4} />
+        </div>
+      )}
       {relationships.length > 0 && (
         <svg
           className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible"
@@ -168,6 +230,7 @@ export function Canvas({
             key={node.id}
             node={node}
             relationshipFrom={relationshipFrom}
+            messageSelection={messageSelection}
             activeNodeId={activeNodeId}
             onSelect={onSelectNode}
             onStartInteraction={onStartInteraction}

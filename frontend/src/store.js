@@ -68,6 +68,31 @@ export const createRelationship = createAsyncThunk(
   },
 )
 
+export const sendMessage = createAsyncThunk(
+  'messages/sendMessage',
+  async ({ messageId, source, destination }, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${apiUrl}/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messageId,
+          clientLabel: source.label,
+          clientKey: source.key,
+          destinationLabel: destination.label,
+          destinationKey: destination.key,
+        }),
+      })
+      const body = await response.json().catch(() => null)
+      if (!response.ok)
+        throw new Error(body?.error || `Request failed (${response.status})`)
+      return { messageId, source, destination, data: body?.data }
+    } catch (error) {
+      return rejectWithValue({ messageId, message: getApiError(error) })
+    }
+  },
+)
+
 export const fetchNodeDetails = createAsyncThunk(
   'nodeDetails/fetch',
   async (node, { rejectWithValue }) => {

@@ -4,6 +4,7 @@ import {
   Database,
   GitBranch,
   Layers3,
+  MessageSquare,
   Plus,
   Radio,
   Sparkles,
@@ -40,13 +41,24 @@ const components = [
   },
 ]
 
-export function ComponentPanel({ onAdd, onRelationship, relationshipFrom }) {
+export function ComponentPanel({
+  onAdd,
+  onRelationship,
+  onSendMessage,
+  relationshipFrom,
+  messageSelection,
+}) {
   const relationshipText =
     relationshipFrom === 'selecting'
       ? 'Choose first node'
       : relationshipFrom
         ? 'Choose second node'
         : 'Create relation'
+  const messageText = !messageSelection
+    ? 'Send message'
+    : messageSelection.fromId
+      ? 'Choose destination'
+      : 'Choose source node'
   return (
     <aside className="border-b border-slate-200 bg-slate-50/70 p-5 lg:border-b-0 lg:border-r">
       <div className="mb-4 flex items-center justify-between">
@@ -79,6 +91,16 @@ export function ComponentPanel({ onAdd, onRelationship, relationshipFrom }) {
       >
         <GitBranch size={19} />
         <span>{relationshipText}</span>
+        <ArrowRight className="ml-auto" size={18} />
+      </button>
+      <button
+        onClick={onSendMessage}
+        className="mt-3 flex w-full items-center gap-2 rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
+      >
+        <span className="grid h-7 w-7 place-items-center rounded-lg bg-white/15">
+          <MessageSquare size={16} />
+        </span>
+        <span>{messageText}</span>
         <ArrowRight className="ml-auto" size={18} />
       </button>
       <div className="mt-8 rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs leading-5 text-indigo-700">

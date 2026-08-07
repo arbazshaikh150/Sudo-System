@@ -83,9 +83,6 @@ func (r *GraphRepository) CreateRelationship(ctx context.Context, input dto.Crea
 			return nil, err
 		}
 	}
-	if input.RelationshipLabel != "CONNECTS_TO" {
-		return nil, fmt.Errorf("invalid relationship label: %s", input.RelationshipLabel)
-	}
 	if strings.TrimSpace(input.FromIdentifier) == "" || strings.TrimSpace(input.ToIdentifier) == "" || strings.TrimSpace(input.RelationshipKey) == "" {
 		return nil, fmt.Errorf("relationship identifiers and key are required")
 	}

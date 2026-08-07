@@ -6,6 +6,7 @@ import {
   createNode,
   createRelationship,
   fetchNodeDetails,
+  sendMessage,
   updateNodeLayout,
 } from './store'
 import { Canvas } from './components/Canvas'
@@ -30,6 +31,8 @@ export default function App() {
   const interactionRef = useRef(null)
   const ignoreNextCardClickRef = useRef(false)
   const [relationshipFrom, setRelationshipFrom] = useState(null)
+  const [messageSelection, setMessageSelection] = useState(null)
+  const [activeMessage, setActiveMessage] = useState(null)
 
   const addComponent = async (component) => {
     const count = nodes.length
@@ -108,12 +111,48 @@ export default function App() {
     if (nodes.length < 2)
       return toast.info('Add at least two nodes before creating a relationship.')
     dispatch(closeNodeDetails())
+    setMessageSelection(null)
     setRelationshipFrom('selecting')
     toast.info('Select the first node for this relationship.')
+  }
+  const beginMessage = () => {
+    if (nodes.length < 2)
+      return toast.info('Add at least two nodes before sending a message.')
+    dispatch(closeNodeDetails())
+    setRelationshipFrom(null)
+    setMessageSelection({ fromId: null, messageId: randomKey('message') })
+    toast.info('Select the source node for your message.')
   }
   const selectNode = async (node) => {
     if (ignoreNextCardClickRef.current) {
       ignoreNextCardClickRef.current = false
+      return
+    }
+    if (messageSelection) {
+      if (!messageSelection.fromId) {
+        setMessageSelection((selection) => ({ ...selection, fromId: node.id }))
+        toast.info(`Source selected: ${node.label}. Now select the destination node.`)
+        return
+      }
+      if (messageSelection.fromId === node.id)
+        return toast.info('Choose a different node as the destination.')
+      const source = nodes.find((item) => item.id === messageSelection.fromId)
+      if (!source) return setMessageSelection(null)
+      const messageId = messageSelection.messageId
+      setMessageSelection(null)
+      const result = await dispatch(sendMessage({ messageId, source, destination: node }))
+      if (sendMessage.fulfilled.match(result)) {
+        setActiveMessage({
+          id: crypto.randomUUID(),
+          messageId,
+          pathKeys: result.payload.data?.keys || [],
+        })
+        toast.success(`Message ${messageId} is travelling to ${node.label}`)
+      } else {
+        toast.error(
+          `Could not send message: ${result.payload?.message || 'API unavailable'}`,
+        )
+      }
       return
     }
     if (!relationshipFrom) {
@@ -157,15 +196,23 @@ export default function App() {
           <ComponentPanel
             onAdd={addComponent}
             onRelationship={beginRelationship}
+            onSendMessage={beginMessage}
             relationshipFrom={relationshipFrom}
+            messageSelection={messageSelection}
           />
           <Canvas
             canvasRef={canvasRef}
             nodes={nodes}
             relationships={relationships}
             relationshipFrom={relationshipFrom}
+            messageSelection={messageSelection}
+            activeMessage={activeMessage}
             activeNodeId={nodeDetails.selectedId}
-            onCancelRelationship={() => setRelationshipFrom(null)}
+            onCancelRelationship={() => {
+              setRelationshipFrom(null)
+              setMessageSelection(null)
+            }}
+            onMessageComplete={() => setActiveMessage(null)}
             onSelectNode={selectNode}
             onStartInteraction={startInteraction}
             onUpdateInteraction={updateInteraction}
