@@ -9,6 +9,15 @@ import { store } from './store'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <Provider store={store}><App /><ToastContainer position="bottom-right" theme="dark" /></Provider>
+    <Provider store={store}>
+      <App />
+      <ToastContainer
+        position="top-right"
+        theme="colored"
+        newestOnTop
+        closeOnClick
+        pauseOnFocusLoss
+      />
+    </Provider>
   </StrictMode>,
 )
