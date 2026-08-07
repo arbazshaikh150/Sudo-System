@@ -46,7 +46,11 @@ func (r *GraphRepository) DeleteNode(ctx context.Context, input dto.DeleteNodeRe
 	if err := validName(input.NodeLabel); err != nil {
 		return err
 	}
-	result, err := r.write(ctx, fmt.Sprintf("MATCH (n:%s {nodeKey: $nodeKey}) DETACH DELETE n", input.NodeLabel), map[string]any{"nodeKey": input.NodeKey})
+	// Creating a session
+	session := r.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+
+	result, err := session.Run(ctx, fmt.Sprintf("MATCH (n:%s {nodeKey: $nodeKey}) DETACH DELETE n", input.NodeLabel), map[string]any{"nodeKey": input.NodeKey})
 	if err != nil {
 		return err
 	}
@@ -93,7 +97,7 @@ func (r *GraphRepository) CreateRelationship(ctx context.Context, input dto.Crea
 // Neo4j's shortestPath traversal uses breadth-first search for this query.
 func (r *GraphRepository) SendMessage(ctx context.Context, input dto.MessageRequest) (map[string]any, error) {
 	// Important because fmt.sprintf is using and user can add some malicious information as well
-	
+
 	for _, label := range []enums.NodeLabel{input.ClientLabel, input.DestinationLabel} {
 		if err := validName(label); err != nil {
 			return nil, err
@@ -116,7 +120,11 @@ func (r *GraphRepository) SendMessage(ctx context.Context, input dto.MessageRequ
 		       }] AS transitions
 	`, input.ClientLabel, input.DestinationLabel)
 
-	result, err := r.write(ctx, query, map[string]any{
+	// Creating a session
+	session := r.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+
+	result, err := session.Run(ctx, query, map[string]any{
 		"messageId":      input.MessageID,
 		"clientKey":      input.ClientKey,
 		"destinationKey": input.DestinationKey,
@@ -133,7 +141,10 @@ func (r *GraphRepository) SendMessage(ctx context.Context, input dto.MessageRequ
 }
 
 func (r *GraphRepository) single(ctx context.Context, query string, params map[string]any) (map[string]any, error) {
-	result, err := r.write(ctx, query, params)
+	session := r.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+	result, err := session.Run(ctx, query, params)
+
 	if err != nil {
 		return nil, err
 	}
@@ -156,16 +167,6 @@ func (r *GraphRepository) single(ctx context.Context, query string, params map[s
 		return nil, fmt.Errorf("unexpected entity response")
 	}
 	return entity, nil
-}
-
-func (r *GraphRepository) write(ctx context.Context, query string, params map[string]any) (neo4j.ResultWithContext, error) {
-	session := r.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
-	defer session.Close(ctx)
-	result, err := session.Run(ctx, query, params)
-	if err != nil {
-		return nil, fmt.Errorf("neo4j query: %w", err)
-	}
-	return result, nil
 }
 
 func validName(input enums.NodeLabel) error {
