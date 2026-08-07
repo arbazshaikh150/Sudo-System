@@ -29,3 +29,11 @@ The SUDO System follows a lightweight service-oriented architecture where a back
 ---
 
 ![HLD](/assest/image4.png)
+
+---
+## 🚀 Request Routing Workflow
+
+The routing engine processes every incoming request by computing the optimal execution path through the infrastructure graph while keeping the graph metadata synchronized asynchronously.
+
+---
+![Async Process](/assest/image7.png)
