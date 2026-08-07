@@ -2,34 +2,33 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"os"
+	"net/http"
 
-	"github.com/joho/godotenv"
-	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	"github.com/arbazshaikh150/Sudo-System/internal/config"
+	"github.com/arbazshaikh150/Sudo-System/internal/controller"
+	"github.com/arbazshaikh150/Sudo-System/internal/repository"
+	"github.com/arbazshaikh150/Sudo-System/internal/server"
 )
 
 func main() {
-	godotenv.Load()
-	uri := os.Getenv("NEO4J_URI")
-	username := os.Getenv("NEO4J_USERNAME")
-	password := os.Getenv("NEO4J_PASSWORD")
-
-	driver, err := neo4j.NewDriverWithContext(
-		uri,
-		neo4j.BasicAuth(username, password, ""),
-	)
+	ctx := context.Background()
+	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	defer driver.Close(context.Background())
-
-	err = driver.VerifyConnectivity(context.Background())
+	driver, err := repository.NewNeo4jDriver(ctx, cfg.Neo4j)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer driver.Close(ctx)
 
-	fmt.Println("Connected to the CongoDb database")
+	graphController := controller.NewGraphController(repository.NewGraphRepository(driver))
+	handler := server.New(graphController)
+
+	log.Printf("sudo-system API listening on %s", cfg.HTTPAddress)
+	if err := http.ListenAndServe(cfg.HTTPAddress, handler); err != nil {
+		log.Fatal(err)
+	}
 }
