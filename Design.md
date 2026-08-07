@@ -20,3 +20,12 @@ The platform exposes a set of RESTful APIs for managing infrastructure component
 ---
 
 ![Rest Api](/assest/image3.png)
+
+---
+## 🏗️ High-Level Architecture
+
+The SUDO System follows a lightweight service-oriented architecture where a backend service manages the infrastructure graph, executes routing simulations, and persists the topology inside a graph database.
+
+---
+
+![HLD](/assest/image4.png)
