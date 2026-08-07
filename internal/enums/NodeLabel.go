@@ -10,6 +10,7 @@ const (
 	Database NodeLabel = "DATABASE"
 	Server   NodeLabel = "SERVER"
 	Gateway  NodeLabel = "GATEWAY"
+	Request  NodeLabel = "REQUEST"
 )
 
 var validLabels = map[NodeLabel]struct{}{
@@ -18,6 +19,7 @@ var validLabels = map[NodeLabel]struct{}{
 	Database: {},
 	Server:   {},
 	Gateway:  {},
+	Request:  {},
 }
 
 func (l NodeLabel) Validate() error {
