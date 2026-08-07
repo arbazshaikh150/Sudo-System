@@ -11,6 +11,11 @@ import (
 	"github.com/arbazshaikh150/Sudo-System/internal/server"
 )
 
+// TODO : 1) Updating the redis / Queue ( with the durable / ttl capacity)
+// TODO : 2) Adding a goRoutine which can do my background task for the retrievel based on label and then do the necessary operations
+// TODO: 3) Goroutine for finding the notConnected nodes and then making there status as notConnnected ( user is going to be notified)
+// TODO : 4) Making the system as weighted network and then performing Dijkstra algorithm for finding the shortest path
+
 func main() {
 	ctx := context.Background()
 	cfg, err := config.Load()
