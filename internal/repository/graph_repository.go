@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/arbazshaikh150/Sudo-System/internal/config"
 	"github.com/arbazshaikh150/Sudo-System/internal/dto"
@@ -50,11 +51,13 @@ func (r *GraphRepository) DeleteNode(ctx context.Context, input dto.DeleteNodeRe
 	session := r.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	result, err := session.Run(ctx, fmt.Sprintf("MATCH (n:%s {nodeKey: $nodeKey}) DETACH DELETE n", input.NodeLabel), map[string]any{"nodeKey": input.NodeKey})
-	if err != nil {
-		return err
-	}
-	_, err = result.Consume(ctx)
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		result, err := tx.Run(ctx, fmt.Sprintf("MATCH (n:%s {nodeKey: $nodeKey}) DETACH DELETE n", input.NodeLabel), map[string]any{"nodeKey": input.NodeKey})
+		if err != nil {
+			return nil, err
+		}
+		return result.Consume(ctx)
+	})
 	return err
 }
 
@@ -75,10 +78,16 @@ func (r *GraphRepository) FetchNode(ctx context.Context, input dto.FetchNodeRequ
 
 func (r *GraphRepository) CreateRelationship(ctx context.Context, input dto.CreateRelationshipRequest) (map[string]any, error) {
 	// validating the necessary labels should be there
-	for _, name := range []enums.NodeLabel{input.FromLabel, input.ToLabel, input.RelationshipLabel} {
+	for _, name := range []enums.NodeLabel{input.FromLabel, input.ToLabel} {
 		if err := validName(name); err != nil {
 			return nil, err
 		}
+	}
+	if input.RelationshipLabel != "CONNECTS_TO" {
+		return nil, fmt.Errorf("invalid relationship label: %s", input.RelationshipLabel)
+	}
+	if strings.TrimSpace(input.FromIdentifier) == "" || strings.TrimSpace(input.ToIdentifier) == "" || strings.TrimSpace(input.RelationshipKey) == "" {
+		return nil, fmt.Errorf("relationship identifiers and key are required")
 	}
 
 	// Extra attributed per edge (example the throughput the latency delay , etc etc)
@@ -143,30 +152,35 @@ func (r *GraphRepository) SendMessage(ctx context.Context, input dto.MessageRequ
 func (r *GraphRepository) single(ctx context.Context, query string, params map[string]any) (map[string]any, error) {
 	session := r.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
-	result, err := session.Run(ctx, query, params)
-
+	entity, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		result, err := tx.Run(ctx, query, params)
+		if err != nil {
+			return nil, err
+		}
+		record, err := result.Single(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("record not found: %w", err)
+		}
+		value, ok := record.Get("node")
+		if !ok {
+			value, ok = record.Get("relationship")
+		}
+		if !ok {
+			value, ok = record.Get("message")
+		}
+		if !ok {
+			return nil, fmt.Errorf("query returned no entity")
+		}
+		resultMap, ok := value.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("unexpected entity response")
+		}
+		return resultMap, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	record, err := result.Single(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("record not found: %w", err)
-	}
-	value, ok := record.Get("node")
-	if !ok {
-		value, ok = record.Get("relationship")
-	}
-	if !ok {
-		value, ok = record.Get("message")
-	}
-	if !ok {
-		return nil, fmt.Errorf("query returned no entity")
-	}
-	entity, ok := value.(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("unexpected entity response")
-	}
-	return entity, nil
+	return entity.(map[string]any), nil
 }
 
 func validName(input enums.NodeLabel) error {

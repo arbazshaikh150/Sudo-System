@@ -30,7 +30,7 @@ type CreateRelationshipRequest struct {
 	FromIdentifier    string          `json:"fromIdentifier"`
 	ToLabel           enums.NodeLabel `json:"toLabel"`
 	ToIdentifier      string          `json:"toIdentifier"`
-	RelationshipLabel enums.NodeLabel `json:"relationshipLabel"`
+	RelationshipLabel string          `json:"relationshipLabel"`
 	RelationshipKey   string          `json:"relationshipKey"`
 	Relationship      string          `json:"relationship"`
 	Attribute         map[string]any  `json:"attribute"`
