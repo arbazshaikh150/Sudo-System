@@ -33,35 +33,29 @@ func (w *AsyncWorker) RecordMessageOnPath(messageID string, keys []string) {
 		session := w.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 		defer session.Close(ctx)
 
-		query := `
-			MATCH (node)
-			WHERE node.nodeKey IN $keys
-			AND (node:REDIS OR node:DATABASE OR node:RABBITMQ)
-			CALL apoc.create.setProperty(node, $messageID, datetime()) YIELD node
-			RETURN count(node) AS updated
-		`
+		// query := `
+		// 	MATCH (node)
+		// 	WHERE node.nodeKey IN $keys
+		// 	AND (node:REDIS OR node:DATABASE OR node:RABBITMQ)
+		// 	CALL apoc.create.setProperty(node, $messageID, datetime()) YIELD node
+		// 	RETURN count(node) AS updated
+		// `
 
 		// Another approach would be
-		/*
-			query := `
-			MATCH (node)
-			WHERE node.nodeKey IN $keys
-			AND (node:REDIS OR node:DATABASE OR node:RABBITMQ)
-			SET node += $updateData
-			`
+		query := `
+		MATCH (node)
+		WHERE node.nodeKey IN $keys
+		AND (node:REDIS OR node:DATABASE OR node:RABBITMQ)
+		SET node += $updateData
+		`
 
-			updateData := map[string]any{
-				messageID: time.Now(),
-			}
+		updateData := map[string]any{
+			messageID: time.Now(),
+		}
 
-			result, err := session.Run(ctx, query, map[string]any{
-				"keys":       keys,
-				"updateData": updateData,
-			})
-		*/
 		result, err := session.Run(ctx, query, map[string]any{
-			"messageID": messageID,
-			"keys":      keys,
+			"keys":       keys,
+			"updateData": updateData,
 		})
 		if err == nil {
 			_, err = result.Consume(ctx)
