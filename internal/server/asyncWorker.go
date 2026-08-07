@@ -18,7 +18,7 @@ func NewAsyncWorker(driver neo4j.DriverWithContext) *AsyncWorker {
 }
 
 // TODO : Here i can use Worker Poll , now i am creating a go routine for
-// each api call 
+// each api call
 // RecordMessageOnPath stores the message ID as a property and its send time as
 // the value on Redis, Database, and RabbitMQ nodes included in the route.
 func (w *AsyncWorker) RecordMessageOnPath(messageID string, keys []string) {
@@ -36,9 +36,29 @@ func (w *AsyncWorker) RecordMessageOnPath(messageID string, keys []string) {
 		query := `
 			MATCH (node)
 			WHERE node.nodeKey IN $keys
-			  AND (node:REDIS OR node:DATABASE OR node:RABBITMQ)
-			SET node[$messageID] = datetime()
+			AND (node:REDIS OR node:DATABASE OR node:RABBITMQ)
+			CALL apoc.create.setProperty(node, $messageID, datetime()) YIELD node
+			RETURN count(node) AS updated
 		`
+
+		// Another approach would be
+		/*
+			query := `
+			MATCH (node)
+			WHERE node.nodeKey IN $keys
+			AND (node:REDIS OR node:DATABASE OR node:RABBITMQ)
+			SET node += $updateData
+			`
+
+			updateData := map[string]any{
+				messageID: time.Now(),
+			}
+
+			result, err := session.Run(ctx, query, map[string]any{
+				"keys":       keys,
+				"updateData": updateData,
+			})
+		*/
 		result, err := session.Run(ctx, query, map[string]any{
 			"messageID": messageID,
 			"keys":      keys,
