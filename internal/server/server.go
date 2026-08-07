@@ -10,14 +10,19 @@ import (
 	"github.com/arbazshaikh150/Sudo-System/internal/enums"
 )
 
-func New(graph *controller.GraphController) http.Handler {
+func New(graph *controller.GraphController, workers ...*AsyncWorker) http.Handler {
+	var worker *AsyncWorker
+	if len(workers) > 0 {
+		worker = workers[0]
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /create/node", createNode(graph))
 	mux.HandleFunc("DELETE /delete/node", deleteNode(graph))
 	mux.HandleFunc("POST /create/relationship", createRelationship(graph))
 	mux.HandleFunc("PUT /update/node", updateNode(graph))
 	mux.HandleFunc("GET /fetch/node/{label}/{nodeKey}", fetchNode(graph))
-	mux.HandleFunc("POST /message", sendMessage(graph))
+	mux.HandleFunc("POST /message", sendMessage(graph, worker))
 	return mux
 }
 
@@ -74,7 +79,7 @@ func fetchNode(graph *controller.GraphController) http.HandlerFunc {
 		nodeLabel := r.PathValue("label")
 		nodeKey := r.PathValue("nodeKey")
 		input := dto.FetchNodeRequest{NodeLabel: enums.NodeLabel(nodeLabel), NodeKey: nodeKey}
-		
+
 		if input.NodeLabel == "" || input.NodeKey == "" {
 			if !decode(w, r, &input) {
 				return
@@ -85,15 +90,33 @@ func fetchNode(graph *controller.GraphController) http.HandlerFunc {
 	}
 }
 
-func sendMessage(graph *controller.GraphController) http.HandlerFunc {
+func sendMessage(graph *controller.GraphController, worker *AsyncWorker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var input dto.MessageRequest
 		if !decode(w, r, &input) {
 			return
 		}
 		result, err := graph.SendMessage(r.Context(), input)
+		if err == nil && worker != nil {
+			worker.RecordMessageOnPath(input.MessageID, pathKeys(result["keys"]))
+		}
 		respondResult(w, http.StatusCreated, "message delivered", result, err)
 	}
+}
+
+func pathKeys(value any) []string {
+	values, ok := value.([]any)
+	if !ok {
+		return nil
+	}
+
+	keys := make([]string, 0, len(values))
+	for _, value := range values {
+		if key, ok := value.(string); ok {
+			keys = append(keys, key)
+		}
+	}
+	return keys
 }
 
 func decode(w http.ResponseWriter, r *http.Request, target any) bool {

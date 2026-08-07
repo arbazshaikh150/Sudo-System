@@ -30,7 +30,7 @@ func main() {
 	defer driver.Close(ctx)
 
 	graphController := controller.NewGraphController(repository.NewGraphRepository(driver))
-	handler := server.New(graphController)
+	handler := server.New(graphController, server.NewAsyncWorker(driver))
 
 	log.Printf("sudo-system API listening on %s", cfg.HTTPAddress)
 	if err := http.ListenAndServe(cfg.HTTPAddress, handler); err != nil {

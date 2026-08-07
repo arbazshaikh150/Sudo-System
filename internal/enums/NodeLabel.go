@@ -8,6 +8,7 @@ const (
 	Client   NodeLabel = "CLIENT"
 	Redis    NodeLabel = "REDIS"
 	Database NodeLabel = "DATABASE"
+	RabbitMq NodeLabel = "RABBITMQ"
 	Server   NodeLabel = "SERVER"
 	Gateway  NodeLabel = "GATEWAY"
 	Request  NodeLabel = "REQUEST"
@@ -20,6 +21,7 @@ var validLabels = map[NodeLabel]struct{}{
 	Server:   {},
 	Gateway:  {},
 	Request:  {},
+	RabbitMq: {},
 }
 
 func (l NodeLabel) Validate() error {
