@@ -1,7 +1,5 @@
 # Build outputs
 bin/
-dist/
-frontend/dist/
 frontend/node_modules/
 *.exe
 *.test
