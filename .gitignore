@@ -15,3 +15,6 @@ frontend/node_modules/
 .DS_Store
 .idea/
 .vscode/
+
+# Etcd file
+k8s/secret.yaml
