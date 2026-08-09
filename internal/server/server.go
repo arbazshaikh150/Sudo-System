@@ -30,6 +30,10 @@ func New(graph *controller.GraphController, workers ...*AsyncWorker) http.Handle
 // The frontend only sends JSON requests, so OPTIONS is sufficient here.
 func withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(
+			"Access-Control-Allow-Origin",
+			"https://sudo-system.arbazshaikh1507.workers.dev",
+		)
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
