@@ -1,6 +1,6 @@
 import { configureStore, createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 
-const apiUrl = (import.meta.env.VITE_API_URL || 'https://dow-default-neo-findings.trycloudflare.com').replace(
+const apiUrl = (import.meta.env.VITE_API_URL || 'https://sudo-system.arbazshaikh1507.workers.dev').replace(
   /\/$/,
   '',
 )
